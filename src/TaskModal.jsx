@@ -1,36 +1,40 @@
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
+import { FormField } from './components/FormField';
+import { Button } from './components/Button';
 
 export default function TaskModal({ isOpen, onClose, onSubmit, defaultValues }) {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const methods = useForm({
     defaultValues: {
       title: '',
       description: '',
       priority: 'Medium',
       deadline: '',
       tags: '',
-    },
+    }
   });
 
   useEffect(() => {
     if (isOpen) {
       if (defaultValues) {
-        reset(defaultValues);
+        const formattedValues = {
+          ...defaultValues,
+          tags: Array.isArray(defaultValues.tags) ? defaultValues.tags.join(', ') : defaultValues.tags
+        };
+        methods.reset(formattedValues);
       } else {
-        reset({ title: '', description: '', priority: 'Medium', deadline: '', tags: '' });
+        methods.reset({ title: '', description: '', priority: 'Medium', deadline: '', tags: '' });
       }
     }
-  }, [isOpen, defaultValues, reset]);
+  }, [isOpen, defaultValues, methods]);
 
   if (!isOpen) return null;
 
   const onFormSubmit = (data) => {
-    let tagsArray = [];
-    if (typeof data.tags === 'string') {
-      tagsArray = data.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
-    } else {
-      tagsArray = data.tags;
-    }
+    const tagsArray = typeof data.tags === 'string' 
+      ? data.tags.split(',').map(t => t.trim()).filter(Boolean)
+      : data.tags;
+    
     onSubmit({ ...data, tags: tagsArray });
     onClose();
   };
@@ -40,63 +44,25 @@ export default function TaskModal({ isOpen, onClose, onSubmit, defaultValues }) 
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <h2>{defaultValues ? 'Edit Task' : 'New Task'}</h2>
         
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <div className="form-group">
-            <label>Title</label>
-            <input
-              {...register('title', { required: true })}
-              className="form-control"
-              placeholder="Enter task title..."
-              autoFocus
+        <FormProvider {...methods}>
+          <form onSubmit={methods.handleSubmit(onFormSubmit)}>
+            <FormField label="Title" name="title" placeholder="Enter task title..." required />
+            <FormField label="Description" name="description" type="textarea" placeholder="Add details..." />
+            <FormField 
+              label="Priority" 
+              name="priority" 
+              type="select" 
+              options={['Low', 'Medium', 'High']} 
             />
-            {errors.title && <span style={{color: '#ef4444', fontSize: '12px'}}>Title is required</span>}
-          </div>
+            <FormField label="Deadline" name="deadline" type="date" />
+            <FormField label="Tags (comma separated)" name="tags" placeholder="dev, design, bug" />
 
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              {...register('description')}
-              className="form-control"
-              placeholder="Add details..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Priority</label>
-            <select {...register('priority')} className="form-control">
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Deadline</label>
-            <input 
-              type="date" 
-              {...register('deadline')} 
-              className="form-control" 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Tags (comma separated)</label>
-            <input 
-              {...register('tags')} 
-              className="form-control" 
-              placeholder="dev, design, bug" 
-            />
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-save">
-              {defaultValues ? 'Save Changes' : 'Create Task'}
-            </button>
-          </div>
-        </form>
+            <div className="modal-actions">
+              <Button type="button" variant="cancel" onClick={onClose}>Cancel</Button>
+              <Button type="submit">{defaultValues ? 'Save Changes' : 'Create Task'}</Button>
+            </div>
+          </form>
+        </FormProvider>
       </div>
     </div>
   );

@@ -5,22 +5,14 @@ import { useStore } from './store';
 import Column from './Column';
 import TaskCard from './TaskCard';
 import TaskModal from './TaskModal';
+import { Button } from './components/Button';
 import './App.css';
 
 export default function App() {
   const { 
-    columns, 
-    tasks, 
-    addColumn, 
-    deleteColumn, 
-    updateColumn, 
-    addTask, 
-    updateTask, 
-    deleteTask, 
-    moveTask, 
-    moveTaskToColumn,
-    theme,
-    toggleTheme
+    columns, tasks, addColumn, deleteColumn, updateColumn, 
+    addTask, updateTask, deleteTask, moveTask, moveTaskToColumn,
+    moveColumn, theme, toggleTheme 
   } = useStore();
   
   const [activeId, setActiveId] = useState(null);
@@ -58,25 +50,19 @@ export default function App() {
   const handleDragOver = (event) => {
     const { active, over } = event;
     if (!over) return;
-    
     const activeId = active.id;
     const overId = over.id;
-    
-    const isActiveTask = active.data.current?.type === 'Task';
-    const isOverTask = over.data.current?.type === 'Task';
-    const isOverColumn = over.data.current?.type === 'Column';
 
-    if (isActiveTask && isOverTask) {
-      const t1 = tasks.find(t => t.id === activeId);
-      const t2 = tasks.find(t => t.id === overId);
-      if (t1 && t2 && t1.columnId !== t2.columnId) {
-        moveTaskToColumn(activeId, t2.columnId);
+    if (active.data.current?.type === 'Task') {
+      const isOverTask = over.data.current?.type === 'Task';
+      const isOverColumn = over.data.current?.type === 'Column';
+
+      if (isOverTask) {
+        const t1 = tasks.find(t => t.id === activeId);
+        const t2 = tasks.find(t => t.id === overId);
+        if (t1 && t2 && t1.columnId !== t2.columnId) moveTaskToColumn(activeId, t2.columnId);
       }
-    }
-    
-    if (isActiveTask && isOverColumn) {
-      const t1 = tasks.find(t => t.id === activeId);
-      if (t1 && t1.columnId !== overId) {
+      if (isOverColumn && tasks.find(t => t.id === activeId)?.columnId !== overId) {
         moveTaskToColumn(activeId, overId);
       }
     }
@@ -85,27 +71,13 @@ export default function App() {
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over) { setActiveId(null); return; }
-    if (active.id !== over.id) { moveTask(active.id, over.id); }
-    setActiveId(null);
-  };
 
-  const openNewTaskModal = (colId) => {
-    setEditingTask(null);
-    setTargetColumnId(colId);
-    setTaskModalOpen(true);
-  };
-
-  const openEditTaskModal = (task) => {
-    setEditingTask(task);
-    setTaskModalOpen(true);
-  };
-
-  const handleTaskSubmit = (data) => {
-    if (editingTask) { 
-      updateTask(editingTask.id, data); 
-    } else { 
-      addTask({ ...data, columnId: targetColumnId }); 
+    if (active.data.current?.type === 'Column') {
+      if (active.id !== over.id) moveColumn(active.id, over.id);
+    } else {
+      if (active.id !== over.id) moveTask(active.id, over.id);
     }
+    setActiveId(null);
   };
 
   return (
@@ -117,9 +89,9 @@ export default function App() {
         </div>
         
         <div className="filters-wrapper">
-          <button className="theme-toggle-btn" onClick={toggleTheme}>
+          <Button variant="theme" onClick={toggleTheme}>
             {theme === 'light' ? '🌙' : '☀️'}
-          </button>
+          </Button>
           
           <input 
             className="search-input" 
@@ -135,16 +107,9 @@ export default function App() {
             <option value="High">High</option>
           </select>
           
-          <select className="filter-select" value={deadlineFilter} onChange={e => setDeadlineFilter(e.target.value)}>
-            <option value="All">All Deadlines</option>
-            <option value="Overdue">Overdue</option>
-            <option value="Today">Today</option>
-            <option value="Future">Future</option>
-          </select>
-          
-          <button className="reset-btn" onClick={() => { setSearch(''); setPriorityFilter('All'); setDeadlineFilter('All'); }}>
+          <Button variant="reset" onClick={() => { setSearch(''); setPriorityFilter('All'); setDeadlineFilter('All'); }}>
             Reset
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -163,23 +128,24 @@ export default function App() {
                   key={col.id}
                   column={col}
                   tasks={filteredTasks.filter(t => t.columnId === col.id)}
-                  onAddTask={openNewTaskModal}
-                  onEditTask={openEditTaskModal}
+                  onAddTask={(id) => { setEditingTask(null); setTargetColumnId(id); setTaskModalOpen(true); }}
+                  onEditTask={(task) => { setEditingTask(task); setTaskModalOpen(true); }}
                   onDeleteTask={deleteTask}
                   onDeleteColumn={deleteColumn}
                   onUpdateColumn={updateColumn}
                 />
               ))}
             </SortableContext>
-            <button className="add-col-btn" onClick={() => addColumn('New Section')}>
+            <Button variant="add" className="add-col-btn" onClick={() => addColumn('New Section')}>
               + Add Section
-            </button>
+            </Button>
           </div>
           
           <DragOverlay>
             {activeId ? (
               tasks.find(t => t.id === activeId) ? 
-              <TaskCard task={tasks.find(t => t.id === activeId)} /> : null
+              <TaskCard task={tasks.find(t => t.id === activeId)} /> :
+              <Column column={columns.find(c => c.id === activeId)} tasks={[]} isOverlay />
             ) : null}
           </DragOverlay>
         </DndContext>
@@ -188,7 +154,7 @@ export default function App() {
       <TaskModal
         isOpen={isTaskModalOpen}
         onClose={() => setTaskModalOpen(false)}
-        onSubmit={handleTaskSubmit}
+        onSubmit={(data) => editingTask ? updateTask(editingTask.id, data) : addTask({ ...data, columnId: targetColumnId })}
         defaultValues={editingTask}
       />
     </div>
