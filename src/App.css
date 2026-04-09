@@ -166,6 +166,40 @@ body {
   transition: width 0.5s ease;
 }
 
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f8fafc;
+  margin-top: 5px;
+}
+
+textarea.form-control {
+  min-height: 100px;
+  resize: none;
+}
+
+.btn-save {
+  background: #818cf8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  padding: 10px 20px;
+  border-radius: 6px;
+  margin-right: 10px;
+}
+
 @keyframes gradientMove {
   0% {
     background-position: 0% 50%;

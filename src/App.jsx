@@ -38,6 +38,30 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'i' || e.key === 'ш')) {
+        if (isTyping) return;
+        e.preventDefault();
+        setEditingTask(null);
+        setTargetColumnId(null); 
+        setTaskModalOpen(true);
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 't' || e.key === 'е')) {
+        e.preventDefault();
+        toggleTheme();
+      }
+
+      if (e.key === 'Escape') setTaskModalOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleTheme, isTaskModalOpen]);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const filteredTasks = useMemo(() => {
@@ -48,9 +72,7 @@ export default function App() {
       const matchSearch = t.title.toLowerCase().includes(search.toLowerCase());
       const matchPriority = priorityFilter === 'All' || t.priority === priorityFilter;
       const matchWeek = !filterByWeek || new Date(t.createdAt) >= oneWeekAgo;
-      const notArchived = !t.archived;
-
-      return matchSearch && matchPriority && matchWeek && notArchived;
+      return matchSearch && matchPriority && matchWeek && !t.archived;
     });
   }, [tasks, search, priorityFilter, filterByWeek]);
 
@@ -61,15 +83,11 @@ export default function App() {
     return { total, done, progress };
   }, [filteredTasks]);
 
-  const handleDragStart = (event) => setActiveId(event.active.id);
-  
   const handleDragOver = (event) => {
     const { active, over } = event;
     if (!over) return;
-
     if (active.data.current?.type === 'Task') {
       const overColId = over.data.current?.type === 'Column' ? over.id : over.data.current?.task?.columnId;
-      
       if (overColId && active.data.current.task.columnId !== overColId) {
         moveTaskToColumn(active.id, overColId);
       }
@@ -79,7 +97,6 @@ export default function App() {
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over) { setActiveId(null); return; }
-
     if (active.data.current?.type === 'Column') {
       if (active.id !== over.id) moveColumn(active.id, over.id);
     } else {
@@ -100,14 +117,12 @@ export default function App() {
           <Button variant="theme" onClick={toggleTheme}>
             {theme === 'light' ? '🌙' : '☀️'}
           </Button>
-
           <input 
             className="search-input" 
             placeholder="Search tasks..." 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
           />
-
           <select 
             className="filter-select" 
             value={priorityFilter} 
@@ -118,16 +133,8 @@ export default function App() {
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
-
-          <Button 
-            className="reset-btn"
-            onClick={() => setFilterByWeek(!filterByWeek)}
-          >
+          <Button className="reset-btn" onClick={() => setFilterByWeek(!filterByWeek)}>
             {filterByWeek ? 'Last 7 Days' : 'All Time'}
-          </Button>
-          
-          <Button variant="reset" onClick={() => { setSearch(''); setPriorityFilter('All'); }}>
-            Reset Filters
           </Button>
         </div>
       </header>
@@ -137,7 +144,7 @@ export default function App() {
           <DndContext 
             sensors={sensors} 
             collisionDetection={closestCorners} 
-            onDragStart={handleDragStart} 
+            onDragStart={(e) => setActiveId(e.active.id)} 
             onDragOver={handleDragOver} 
             onDragEnd={handleDragEnd}
           >
@@ -148,7 +155,11 @@ export default function App() {
                     key={col.id}
                     column={col}
                     tasks={filteredTasks.filter(t => t.columnId === col.id)}
-                    onAddTask={(id) => { setEditingTask(null); setTargetColumnId(id); setTaskModalOpen(true); }}
+                    onAddTask={(id) => { 
+                      setEditingTask(null); 
+                      setTargetColumnId(id);
+                      setTaskModalOpen(true); 
+                    }}
                     onEditTask={(task) => { setEditingTask(task); setTaskModalOpen(true); }}
                     onDeleteTask={deleteTask}
                     onDeleteColumn={deleteColumn}
@@ -162,39 +173,27 @@ export default function App() {
             </div>
             
             <DragOverlay>
-              {activeId ? (
-                tasks.find(t => t.id === activeId) ? 
-                <TaskCard task={tasks.find(t => t.id === activeId)} /> :
-                <Column column={columns.find(c => c.id === activeId)} tasks={[]} isOverlay />
-              ) : null}
+              {activeId ? <TaskCard task={tasks.find(t => t.id === activeId)} /> : null}
             </DragOverlay>
           </DndContext>
         </div>
 
         <aside className="stats-sidebar">
           <div className="stats-card">
-            <h3>{filterByWeek ? 'Weekly Stats' : 'Total Stats'}</h3>
+            <h3>Board Stats</h3>
             <div className="stat-item">
               <span className="stat-label">Tasks</span>
               <span className="stat-value">{stats.total}</span>
             </div>
-            <div className="stat-divider" />
-            <div className="completion-stats">
-              <div className="stat-item">
-                <span className="stat-label">Progress</span>
-                <span className="stat-value">{stats.progress}%</span>
-              </div>
-              <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${stats.progress}%` }} />
-              </div>
-              <span className="stat-label" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                {stats.done} of {stats.total} completed
-              </span>
+            <div className="progress-bar-bg">
+              <div className="progress-bar-fill" style={{ width: `${stats.progress}%` }} />
             </div>
-            <div className="stat-divider" style={{ margin: '20px 0' }} />
+            <div className="shortcuts-info" style={{ marginTop: '20px', fontSize: '11px', opacity: 0.6 }}>
+              <p>⌨️ <kbd>Ctrl</kbd>+<kbd>I</kbd> New Task</p>
+            </div>
             <Button 
               className="btn-danger"
-              onClick={() => { if(window.confirm('Видалити всі таски та очистити статистику?')) clearTasks(); }}
+              onClick={() => { if(window.confirm('Delete all?')) clearTasks(); }}
             >
               Reset All Stats
             </Button>
@@ -205,7 +204,12 @@ export default function App() {
       <TaskModal
         isOpen={isTaskModalOpen}
         onClose={() => setTaskModalOpen(false)}
-        onSubmit={(data) => editingTask ? updateTask(editingTask.id, data) : addTask({ ...data, columnId: targetColumnId })}
+        columns={columns}
+        targetColumnId={targetColumnId}
+        onSubmit={(data) => {
+          editingTask ? updateTask(editingTask.id, data) : addTask(data);
+          setTaskModalOpen(false);
+        }}
         defaultValues={editingTask}
       />
     </div>
