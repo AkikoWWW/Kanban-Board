@@ -94,12 +94,6 @@ body {
   background-size: 20px 20px;
 }
 
-.columns-container {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-
 .column {
   background: var(--bg-surface);
   min-width: 300px;
@@ -124,11 +118,6 @@ body {
 .task-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.task-card.task-done {
-  opacity: 0.5;
-  text-decoration: line-through;
 }
 
 .btn-danger {
@@ -199,6 +188,7 @@ textarea.form-control {
   border-radius: 6px;
   margin-right: 10px;
 }
+
 
 @keyframes gradientMove {
   0% {

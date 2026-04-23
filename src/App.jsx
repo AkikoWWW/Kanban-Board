@@ -1,35 +1,36 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  DndContext, 
-  DragOverlay, 
-  PointerSensor, 
-  useSensor, 
-  useSensors, 
-  closestCorners 
-} from '@dnd-kit/core';
-import { 
-  SortableContext, 
-  horizontalListSortingStrategy 
-} from '@dnd-kit/sortable';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useStore } from './store';
 import Column from './Column';
 import TaskCard from './TaskCard';
 import TaskModal from './TaskModal';
 import { Button } from './components/Button';
+import useKeyPress from './hooks/useKeyPress';
 import './App.css';
 
 export default function App() {
-  const { 
-    columns, tasks, addColumn, deleteColumn, updateColumn, 
-    addTask, updateTask, deleteTask, moveTask, moveTaskToColumn,
-    moveColumn, theme, toggleTheme, clearTasks 
+  const {
+    columns,
+    tasks,
+    addColumn,
+    deleteColumn,
+    updateColumn,
+    addTask,
+    updateTask,
+    deleteTask,
+    moveTask,
+    moveTaskToColumn,
+    moveColumn,
+    theme,
+    toggleTheme,
+    clearTasks
   } = useStore();
-  
+
   const [activeId, setActiveId] = useState(null);
   const [isTaskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [targetColumnId, setTargetColumnId] = useState(null);
-
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [filterByWeek, setFilterByWeek] = useState(true);
@@ -38,31 +39,19 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+  const handleThemeToggle = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    toggleTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'i' || e.key === 'ш')) {
-        if (isTyping) return;
-        e.preventDefault();
-        setEditingTask(null);
-        setTargetColumnId(null); 
-        setTaskModalOpen(true);
-      }
+  useKeyPress('i', () => {
+    setEditingTask(null);
+    setTargetColumnId(null);
+    setTaskModalOpen(true);
+  });
 
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 't' || e.key === 'е')) {
-        e.preventDefault();
-        toggleTheme();
-      }
-
-      if (e.key === 'Escape') setTaskModalOpen(false);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleTheme, isTaskModalOpen]);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  useKeyPress('t', () => handleThemeToggle());
 
   const filteredTasks = useMemo(() => {
     const oneWeekAgo = new Date();
@@ -96,7 +85,10 @@ export default function App() {
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    if (!over) { setActiveId(null); return; }
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
     if (active.data.current?.type === 'Column') {
       if (active.id !== over.id) moveColumn(active.id, over.id);
     } else {
@@ -112,9 +104,9 @@ export default function App() {
           <span className="logo-icon">⚡</span>
           <h1>AkiTask</h1>
         </div>
-        
+
         <div className="filters-wrapper">
-          <Button variant="theme" onClick={toggleTheme}>
+          <Button variant="theme" onClick={handleThemeToggle}>
             {theme === 'light' ? '🌙' : '☀️'}
           </Button>
           <input 
@@ -141,11 +133,11 @@ export default function App() {
 
       <div className="main-layout">
         <div className="board">
-          <DndContext 
-            sensors={sensors} 
-            collisionDetection={closestCorners} 
-            onDragStart={(e) => setActiveId(e.active.id)} 
-            onDragOver={handleDragOver} 
+          <DndContext
+            sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
+            collisionDetection={closestCorners}
+            onDragStart={(e) => setActiveId(e.active.id)}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="columns-container">
@@ -171,9 +163,11 @@ export default function App() {
                 + Add Section
               </Button>
             </div>
-            
+
             <DragOverlay>
-              {activeId ? <TaskCard task={tasks.find(t => t.id === activeId)} /> : null}
+              {activeId && tasks.find(t => t.id === activeId) ? (
+                <TaskCard task={tasks.find(t => t.id === activeId)} />
+              ) : null}
             </DragOverlay>
           </DndContext>
         </div>

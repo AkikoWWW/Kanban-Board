@@ -30,7 +30,7 @@ export default function TaskCard({ task, onEdit, onDelete }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`task-card ${isDone ? 'task-done' : ''}`}
+      className="task-card"
     >
       <div className="task-top">
         <div 
@@ -46,11 +46,13 @@ export default function TaskCard({ task, onEdit, onDelete }) {
         </div>
         
         <div className="task-actions-btn" onPointerDown={(e) => e.stopPropagation()}>
-          <Button variant="icon" onClick={(e) => { onEdit(task); }}>
-             ✎
-          </Button>
+          {!isDone && (
+            <Button variant="icon" onClick={(e) => { onEdit(task); }}>
+                ✎
+            </Button>
+          )}
           <Button variant="icon" onClick={(e) => { onDelete(task.id); }}>
-             🗑
+              🗑
           </Button>
         </div>
       </div>

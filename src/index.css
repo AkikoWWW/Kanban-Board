@@ -159,40 +159,24 @@ body {
 
 .columns-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); 
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
   gap: 24px;
-  align-items: start; 
+  align-items: start;
   padding-bottom: 50px;
-}
-
-@media (max-width: 1400px) {
-  .columns-container {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 1100px) {
-  .columns-container {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 700px) {
-  .columns-container {
-    grid-template-columns: 1fr;
-  }
 }
 
 .column {
   background: var(--bg-surface);
   width: 100%; 
-  min-width: 0; 
+  min-width: 300px; 
   border-radius: 12px;
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  height: fit-content; 
   max-height: 80vh; 
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
 }
 
 .column-header {
@@ -274,7 +258,8 @@ body {
 
 .add-col-btn {
   height: 60px; 
-  width: 100%;
+  width: 50%;
+  min-width: 295px;
   background: transparent;
   border: 2px dashed var(--border);
   border-radius: 12px;
@@ -287,6 +272,7 @@ body {
   align-items: center;
   justify-content: center;
   opacity: 0.8;
+  margin: 0;
 }
 
 .add-col-btn:hover {
@@ -715,12 +701,6 @@ textarea.form-control {
     height: 16px;
     cursor: pointer;
     accent-color: var(--primary);
-  }
-  
-  .task-card.task-done {
-    opacity: 0.6;
-    background: var(--bg-body);
-    border-style: dashed;
   }
   
   .title-done {
