@@ -1,9 +1,13 @@
 import { useEffect } from 'react';
 
-const useKeyPress = (key, handler) => {
+const useKeyPress = (key, handler, useCtrl = false) => {
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === key) {
+      const isKeyMatch = e.key.toLowerCase() === key.toLowerCase();
+      const isCtrlMatch = useCtrl ? (e.ctrlKey || e.metaKey) : true;
+
+      if (isKeyMatch && isCtrlMatch) {
+        if (useCtrl) e.preventDefault();
         handler();
       }
     };
@@ -12,7 +16,7 @@ const useKeyPress = (key, handler) => {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [key, handler]);
+  }, [key, handler, useCtrl]);
 };
 
 export default useKeyPress;

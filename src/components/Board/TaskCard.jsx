@@ -1,8 +1,8 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useStore } from './store';
-import { Button } from './components/Button';
+import { useStore } from '../../store'; 
+import { Button } from '../UI/Button';
 
 export default function TaskCard({ task, onEdit, onDelete }) {
   const toggleTaskDone = useStore((state) => state.toggleTaskDone);

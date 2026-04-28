@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useStore } from './store';
-import Column from './Column';
-import TaskCard from './TaskCard';
-import TaskModal from './TaskModal';
-import { Button } from './components/Button';
+
+import Board from "./components/Board/Board";
+import StatsSidebar from "./components/StatsSlidebar/StatsSidebar";
+import TaskModal from "./components/UI/TaskModal";
+import { Button } from "./components/UI/Button";
+
 import useKeyPress from './hooks/useKeyPress';
 import './App.css';
 
@@ -39,19 +40,57 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleThemeToggle = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    toggleTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
-
-  useKeyPress('i', () => {
+  const handleAddTask = useCallback((columnId) => {
     setEditingTask(null);
-    setTargetColumnId(null);
+    setTargetColumnId(columnId);
     setTaskModalOpen(true);
-  });
+  }, []);
 
-  useKeyPress('t', () => handleThemeToggle());
+  const handleEditTask = useCallback((task) => {
+    setEditingTask(task);
+    setTaskModalOpen(true);
+  }, []);
+
+  const handleDragStart = useCallback((event) => {
+    setActiveId(event.active.id);
+  }, []);
+
+  const handleDragOver = useCallback((event) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    if (active.data.current?.type === 'Task') {
+      const overColId = over.data.current?.type === 'Column' 
+        ? over.id 
+        : over.data.current?.task?.columnId;
+
+      if (overColId && active.data.current.task.columnId !== overColId) {
+        moveTaskToColumn(active.id, overColId);
+      }
+    }
+  }, [moveTaskToColumn]);
+
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
+
+    if (active.data.current?.type === 'Column') {
+      if (active.id !== over.id) moveColumn(active.id, over.id);
+    } else {
+      if (active.id !== over.id) moveTask(active.id, over.id);
+    }
+    setActiveId(null);
+  }, [moveColumn, moveTask]);
+
+  const handleThemeToggle = useCallback(() => {
+    toggleTheme();
+  }, [toggleTheme]);
+
+  useKeyPress('i', handleAddTask, true);
+  useKeyPress('t', handleThemeToggle);
 
   const filteredTasks = useMemo(() => {
     const oneWeekAgo = new Date();
@@ -72,30 +111,9 @@ export default function App() {
     return { total, done, progress };
   }, [filteredTasks]);
 
-  const handleDragOver = (event) => {
-    const { active, over } = event;
-    if (!over) return;
-    if (active.data.current?.type === 'Task') {
-      const overColId = over.data.current?.type === 'Column' ? over.id : over.data.current?.task?.columnId;
-      if (overColId && active.data.current.task.columnId !== overColId) {
-        moveTaskToColumn(active.id, overColId);
-      }
-    }
-  };
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over) {
-      setActiveId(null);
-      return;
-    }
-    if (active.data.current?.type === 'Column') {
-      if (active.id !== over.id) moveColumn(active.id, over.id);
-    } else {
-      if (active.id !== over.id) moveTask(active.id, over.id);
-    }
-    setActiveId(null);
-  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   return (
     <div className="app-container">
@@ -132,67 +150,26 @@ export default function App() {
       </header>
 
       <div className="main-layout">
-        <div className="board">
-          <DndContext
-            sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
-            collisionDetection={closestCorners}
-            onDragStart={(e) => setActiveId(e.active.id)}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="columns-container">
-              <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
-                {columns.map(col => (
-                  <Column
-                    key={col.id}
-                    column={col}
-                    tasks={filteredTasks.filter(t => t.columnId === col.id)}
-                    onAddTask={(id) => { 
-                      setEditingTask(null); 
-                      setTargetColumnId(id);
-                      setTaskModalOpen(true); 
-                    }}
-                    onEditTask={(task) => { setEditingTask(task); setTaskModalOpen(true); }}
-                    onDeleteTask={deleteTask}
-                    onDeleteColumn={deleteColumn}
-                    onUpdateColumn={updateColumn}
-                  />
-                ))}
-              </SortableContext>
-              <Button variant="add" className="add-col-btn" onClick={() => addColumn('New Section')}>
-                + Add Section
-              </Button>
-            </div>
+        <Board 
+          columns={columns}
+          tasks={filteredTasks}
+          activeId={activeId}
+          sensors={sensors}
+          handleDragStart={handleDragStart}
+          handleDragOver={handleDragOver}
+          handleDragEnd={handleDragEnd}
+          onAddTask={handleAddTask}
+          onEditTask={handleEditTask}
+          onDeleteTask={deleteTask}
+          onDeleteColumn={deleteColumn}
+          onUpdateColumn={updateColumn}
+          onAddColumn={addColumn}
+        />
 
-            <DragOverlay>
-              {activeId && tasks.find(t => t.id === activeId) ? (
-                <TaskCard task={tasks.find(t => t.id === activeId)} />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
-
-        <aside className="stats-sidebar">
-          <div className="stats-card">
-            <h3>Board Stats</h3>
-            <div className="stat-item">
-              <span className="stat-label">Tasks</span>
-              <span className="stat-value">{stats.total}</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: `${stats.progress}%` }} />
-            </div>
-            <div className="shortcuts-info" style={{ marginTop: '20px', fontSize: '11px', opacity: 0.6 }}>
-              <p>⌨️ <kbd>Ctrl</kbd>+<kbd>I</kbd> New Task</p>
-            </div>
-            <Button 
-              className="btn-danger"
-              onClick={() => { if(window.confirm('Delete all?')) clearTasks(); }}
-            >
-              Reset All Stats
-            </Button>
-          </div>
-        </aside>
+        <StatsSidebar 
+          stats={stats} 
+          onClearTasks={clearTasks} 
+        />
       </div>
 
       <TaskModal
